@@ -1,0 +1,13 @@
+/Users/admin/Desktop/boringssl-spm/build-test/CMakeFiles/boringssl_prefix_symbols.dir
+/Users/admin/Desktop/boringssl-spm/build-test/CMakeFiles/fipsmodule.dir
+/Users/admin/Desktop/boringssl-spm/build-test/CMakeFiles/crypto.dir
+/Users/admin/Desktop/boringssl-spm/build-test/CMakeFiles/ssl.dir
+/Users/admin/Desktop/boringssl-spm/build-test/CMakeFiles/decrepit.dir
+/Users/admin/Desktop/boringssl-spm/build-test/CMakeFiles/pki.dir
+/Users/admin/Desktop/boringssl-spm/build-test/CMakeFiles/bssl.dir
+/Users/admin/Desktop/boringssl-spm/build-test/CMakeFiles/edit_cache.dir
+/Users/admin/Desktop/boringssl-spm/build-test/CMakeFiles/rebuild_cache.dir
+/Users/admin/Desktop/boringssl-spm/build-test/CMakeFiles/list_install_components.dir
+/Users/admin/Desktop/boringssl-spm/build-test/CMakeFiles/install.dir
+/Users/admin/Desktop/boringssl-spm/build-test/CMakeFiles/install/local.dir
+/Users/admin/Desktop/boringssl-spm/build-test/CMakeFiles/install/strip.dir

@@ -1,27 +1,89 @@
 name: build-ios
 on:
-  workflow_dispatch: {}
-  push:
-    paths:
-      - "ci/**"
-      - ".github/workflows/**"
-      - "Package.swift"
+  workflow_dispatch:
   schedule:
     - cron: "17 3 * * *"
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: toolchain
-        run: |
-          xcodebuild -version
-          brew update
-          brew install ninja cmake rsync
-      - name: build
-        run: ./ci/build_boringssl_ios.sh
-      - name: artifact
-        uses: actions/upload-artifact@v4
         with:
-          name: BoringSSL.xcframework.zip
-          path: build-out/BoringSSL.xcframework.zip
+          fetch-depth: 0
+      - name: Gate 14d
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          repo="${GITHUB_REPOSITORY}"
+          rel="$(curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${repo}/releases?per_page=1" || true)"
+          if [ -n "${rel}" ] && echo "${rel}" | grep -q '"created_at"' ; then
+            created="$(python3 - <<'PY'
+import json,sys,datetime
+j=json.load(sys.stdin)
+print(j[0]["created_at"])
+PY
+<<<"${rel}")"
+            python3 - <<'PY'
+import os,datetime
+from datetime import timezone
+s=os.environ["CREATED"]
+t=datetime.datetime.fromisoformat(s.replace("Z","+00:00"))
+age=(datetime.datetime.now(timezone.utc)-t).total_seconds()
+print(int(age))
+PY
+            secs="$(python3 - <<'PY'
+import os,datetime
+from datetime import timezone
+s=os.environ["CREATED"]
+t=datetime.datetime.fromisoformat(s.replace("Z","+00:00"))
+age=(datetime.datetime.now(timezone.utc)-t).total_seconds()
+print(int(age))
+PY
+CREATED="${created}")"
+            if [ "${secs}" -lt 1209600 ]; then
+              exit 0
+            fi
+          fi
+      - name: Install deps
+        run: |
+          set -euo pipefail
+          brew update
+          brew install cmake ninja jq || true
+      - name: Gate upstream change
+        run: |
+          set -euo pipefail
+          test -f ci/boringssl-upstream.txt || true
+      - name: Build
+        run: |
+          set -euo pipefail
+          BUILD_SCRIPT="ci/build_boringssl_ios.sh"
+          chmod +x "${BUILD_SCRIPT}"
+          ./"${BUILD_SCRIPT}"
+      - name: Verify outputs
+        run: |
+          set -euo pipefail
+          test -f build-out/BoringSSL.xcframework.zip
+      - name: Compute checksum
+        id: sum
+        run: |
+          set -euo pipefail
+          cs="$(swift package compute-checksum build-out/BoringSSL.xcframework.zip)"
+          echo "checksum=${cs}" >> "${GITHUB_OUTPUT}"
+      - name: Publish release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="ios-$(date +%Y%m%d)"
+          gh release create "${tag}" build-out/BoringSSL.xcframework.zip --title "${tag}" --notes ""
+      - name: Commit state
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "ci: build ios" || true
+          git push || true

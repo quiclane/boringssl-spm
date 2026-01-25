@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/admin/Desktop/boringssl-spm/build-test/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
