@@ -1,0 +1,27 @@
+name: build-ios
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - "ci/**"
+      - ".github/workflows/**"
+      - "Package.swift"
+  schedule:
+    - cron: "17 3 * * *"
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: toolchain
+        run: |
+          xcodebuild -version
+          brew update
+          brew install ninja cmake rsync
+      - name: build
+        run: ./ci/build_boringssl_ios.sh
+      - name: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoringSSL.xcframework.zip
+          path: build-out/BoringSSL.xcframework.zip
