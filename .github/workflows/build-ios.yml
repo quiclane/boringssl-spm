@@ -12,78 +12,76 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Gate 14d
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          repo="${GITHUB_REPOSITORY}"
-          rel="$(curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${repo}/releases?per_page=1" || true)"
-          if [ -n "${rel}" ] && echo "${rel}" | grep -q '"created_at"' ; then
-            created="$(python3 - <<'PY'
-import json,sys,datetime
-j=json.load(sys.stdin)
-print(j[0]["created_at"])
-PY
-<<<"${rel}")"
-            python3 - <<'PY'
-import os,datetime
-from datetime import timezone
-s=os.environ["CREATED"]
-t=datetime.datetime.fromisoformat(s.replace("Z","+00:00"))
-age=(datetime.datetime.now(timezone.utc)-t).total_seconds()
-print(int(age))
-PY
-            secs="$(python3 - <<'PY'
-import os,datetime
-from datetime import timezone
-s=os.environ["CREATED"]
-t=datetime.datetime.fromisoformat(s.replace("Z","+00:00"))
-age=(datetime.datetime.now(timezone.utc)-t).total_seconds()
-print(int(age))
-PY
-CREATED="${created}")"
-            if [ "${secs}" -lt 1209600 ]; then
-              exit 0
-            fi
-          fi
       - name: Install deps
         run: |
           set -euo pipefail
           brew update
-          brew install cmake ninja jq || true
-      - name: Gate upstream change
+          brew install cmake ninja || true
+      - name: Gate
+        id: gate
         run: |
           set -euo pipefail
-          test -f ci/boringssl-upstream.txt || true
+          ROOT="$PWD"
+          CFG="$ROOT/ci/boringssl-upstream.txt"
+          REPO="$(awk -F= '/^repo=/{print $2}' "$CFG" 2>/dev/null|tail -n 1)"
+          BRANCH="$(awk -F= '/^branch=/{print $2}' "$CFG" 2>/dev/null|tail -n 1)"
+          [ -n "${REPO:-}" ]||REPO="https://boringssl.googlesource.com/boringssl"
+          [ -n "${BRANCH:-}" ]||BRANCH="main"
+          LAST_FILE="$ROOT/ci/last_success_epoch.txt"
+          UP_FILE="$ROOT/ci/upstream_head.txt"
+          now="$(date +%s)"
+          last=0
+          if [ -f "$LAST_FILE" ]; then last="$(tr -d '\r\n ' <"$LAST_FILE" || echo 0)"; fi
+          if [ -n "${last:-}" ] && [ "$last" -gt 0 ] 2>/dev/null; then age="$((now-last))"; else age=999999999; fi
+          tmp="$(mktemp -d)"
+          git clone --depth 1 --branch "$BRANCH" "$REPO" "$tmp/up"
+          head="$(git -C "$tmp/up" rev-parse HEAD)"
+          rm -rf "$tmp"
+          prev=""
+          if [ -f "$UP_FILE" ]; then prev="$(tr -d '\r\n ' <"$UP_FILE" || true)"; fi
+          should=1
+          if [ "$age" -lt 1209600 ]; then should=0; fi
+          if [ -n "${prev:-}" ] && [ "$head" = "$prev" ]; then should=0; fi
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+          echo "now=$now" >> "$GITHUB_OUTPUT"
+          echo "should=$should" >> "$GITHUB_OUTPUT"
       - name: Build
+        if: steps.gate.outputs.should == '1'
         run: |
           set -euo pipefail
-          BUILD_SCRIPT="ci/build_boringssl_ios.sh"
-          chmod +x "${BUILD_SCRIPT}"
-          ./"${BUILD_SCRIPT}"
+          chmod +x ci/build_boringssl_ios.sh
+          ./ci/build_boringssl_ios.sh
       - name: Verify outputs
+        if: steps.gate.outputs.should == '1'
         run: |
           set -euo pipefail
           test -f build-out/BoringSSL.xcframework.zip
       - name: Compute checksum
+        if: steps.gate.outputs.should == '1'
         id: sum
         run: |
           set -euo pipefail
           cs="$(swift package compute-checksum build-out/BoringSSL.xcframework.zip)"
-          echo "checksum=${cs}" >> "${GITHUB_OUTPUT}"
+          echo "checksum=$cs" >> "$GITHUB_OUTPUT"
       - name: Publish release
+        if: steps.gate.outputs.should == '1'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          tag="ios-$(date +%Y%m%d)"
-          gh release create "${tag}" build-out/BoringSSL.xcframework.zip --title "${tag}" --notes ""
+          short="$(echo "${{ steps.gate.outputs.head }}" | cut -c1-12)"
+          tag="ios-$(date +%Y%m%d)-${short}"
+          gh release create "$tag" build-out/BoringSSL.xcframework.zip --title "$tag" --notes "upstream=${{ steps.gate.outputs.head }}
+checksum=${{ steps.sum.outputs.checksum }}"
       - name: Commit state
+        if: steps.gate.outputs.should == '1'
         run: |
           set -euo pipefail
+          mkdir -p ci
+          printf "%s\n" "${{ steps.gate.outputs.head }}" > ci/upstream_head.txt
+          printf "%s\n" "${{ steps.gate.outputs.now }}" > ci/last_success_epoch.txt
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add -A
-          git commit -m "ci: build ios" || true
+          git add ci/upstream_head.txt ci/last_success_epoch.txt
+          git commit -m "ci: update state" || true
           git push || true
