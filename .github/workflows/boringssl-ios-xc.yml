@@ -12,12 +12,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Install deps
         run: |
           set -euo pipefail
           sudo softwareupdate --install-rosetta --agree-to-license || true
           brew update
           brew install cmake ninja unzip || true
+          command -v gh >/dev/null 2>&1 || brew install gh || true
+
       - name: Gate
         id: gate
         run: |
@@ -26,10 +29,7 @@ jobs:
           CFG="$ROOT/ci/boringssl-upstream.txt"
           REPO="$(awk -F= '/^repo=/{print $2}' "$CFG" 2>/dev/null|tail -n 1)"
           BRANCH="$(awk -F= '/^branch=/{print $2}' "$CFG" 2>/dev/null|tail -n 1)"
-          [ -n "${REPO:-}" ]||REPO="https://boringssl.googlesource.com/boringssl"
-          if [ -z "${BRANCH:-}" ]; then
-            BRANCH="$(git ls-remote --symref "$REPO" HEAD 2>/dev/null|awk '/^ref:/{print $2}'|sed 's@refs/heads/@@')"
-          fi
+          [ -n "${REPO:-}" ]||REPO="https://github.com/google/boringssl.git"
           [ -n "${BRANCH:-}" ]||BRANCH="main"
           LAST_FILE="$ROOT/ci/last_success_epoch.txt"
           UP_FILE="$ROOT/ci/upstream_head.txt"
@@ -44,22 +44,25 @@ jobs:
           prev=""
           if [ -f "$UP_FILE" ]; then prev="$(tr -d '\r\n ' <"$UP_FILE"||true)"; fi
           should=1
-          if [ "$age" -lt 1209600 ]; then should=0; fi
+          if [ "$age" -lt 259200 ]; then should=0; fi
           if [ -n "${prev:-}" ] && [ "$head" = "$prev" ]; then should=0; fi
           echo "head=$head" >> "$GITHUB_OUTPUT"
           echo "now=$now" >> "$GITHUB_OUTPUT"
           echo "should=$should" >> "$GITHUB_OUTPUT"
+
       - name: Build
         if: steps.gate.outputs.should == '1'
         run: |
           set -euo pipefail
           chmod +x ci/build_boringssl_ios.sh
           ./ci/build_boringssl_ios.sh
+
       - name: Verify outputs
         if: steps.gate.outputs.should == '1'
         run: |
           set -euo pipefail
           test -f build-out/BoringSSL.xcframework.zip
+
       - name: Compute checksum + notes
         if: steps.gate.outputs.should == '1'
         id: sum
@@ -68,6 +71,7 @@ jobs:
           cs="$(swift package compute-checksum build-out/BoringSSL.xcframework.zip)"
           echo "checksum=$cs" >> "$GITHUB_OUTPUT"
           printf "upstream=%s\nchecksum=%s\n" "${{ steps.gate.outputs.head }}" "$cs" > /tmp/release-notes.txt
+
       - name: Publish release
         if: steps.gate.outputs.should == '1'
         env:
@@ -77,6 +81,23 @@ jobs:
           short="$(echo "${{ steps.gate.outputs.head }}" | cut -c1-12)"
           tag="ios-$(date +%Y%m%d)-${short}"
           gh release create "$tag" build-out/BoringSSL.xcframework.zip --title "$tag" --notes-file /tmp/release-notes.txt
+
+      - name: Prune old releases (keep 2 newest)
+        if: steps.gate.outputs.should == '1'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          keep=2
+          tags="$(gh release list --limit 100 --json tagName,createdAt -q 'sort_by(. , .createdAt) | reverse | .[].tagName')"
+          i=0
+          while IFS= read -r t; do
+            [ -n "$t" ]||continue
+            i="$((i+1))"
+            if [ "$i" -le "$keep" ]; then continue; fi
+            gh release delete "$t" -y --cleanup-tag || true
+          done <<<"$tags"
+
       - name: Commit state
         if: steps.gate.outputs.should == '1'
         run: |
