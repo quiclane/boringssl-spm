@@ -16,6 +16,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install deps
         run: |
@@ -29,10 +31,25 @@ jobs:
           set -euo pipefail
           chmod +x ci/build_boringssl_ios.sh
           ./ci/build_boringssl_ios.sh
+          test -f build-out/BoringSSL.xcframework.zip
+
+      - name: Pick tag
+        id: pick
+        run: |
+          set -euo pipefail
+          ref="${GITHUB_REF:-}"
+          if printf "%s" "$ref" | grep -q '^refs/tags/'; then
+            tag="${ref#refs/tags/}"
+          else
+            tag="auto-$(date +%Y%m%d)-${GITHUB_RUN_NUMBER}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Release + upload asset
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ steps.pick.outputs.tag }}
+          name: ${{ steps.pick.outputs.tag }}
           files: build-out/BoringSSL.xcframework.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
