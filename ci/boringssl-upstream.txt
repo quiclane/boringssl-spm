@@ -1,2 +1,2 @@
-repo=https://boringssl.googlesource.com/boringssl
+repo=https://github.com/google/boringssl.git
 branch=main
