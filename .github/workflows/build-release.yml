@@ -5,39 +5,34 @@ on:
     tags:
       - "v*"
   schedule:
-    - cron: "0 0 1,15 * *" # This will trigger the job every 1st and 15th day of the month at midnight UTC
+    - cron: "0 0 1,15 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: macos-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-    - name: Set up macOS environment
-      run: |
-        sudo softwareupdate --install-rosetta --agree-to-license
-        brew install cmake ninja
+      - name: Install deps
+        run: |
+          set -euo pipefail
+          sudo softwareupdate --install-rosetta --agree-to-license || true
+          brew update
+          brew install cmake ninja || true
 
-    - name: Build xcframework
-      run: |
-        cd ~/Desktop/boringssl-spm
-        # Build steps for the xcframework (use your actual build commands)
+      - name: Build xcframework
+        run: |
+          set -euo pipefail
+          chmod +x ci/build_boringssl_ios.sh
+          ./ci/build_boringssl_ios.sh
 
-    - name: Create GitHub release
-      uses: gh-actions/create-release@v1
-      with:
-        tag_name: v0.0.1
-        release_name: "Release v0.0.1"
-        body: "This is the latest xcframework release"
-        draft: false
-        prerelease: false
-
-    - name: Upload xcframework to release
-      uses: gh-actions/upload-release-asset@v1
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ~/Desktop/boringssl-spm/build-out/BoringSSL.xcframework.zip
-        asset_name: BoringSSL.xcframework.zip
-        asset_content_type: application/zip
+      - name: Release + upload asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build-out/BoringSSL.xcframework.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
