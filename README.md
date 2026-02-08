@@ -12,7 +12,7 @@ This package simplifies the integration of **BoringSSL** into your **iOS** and *
 While **BoringSSL** is a critical part of many of Google’s services, integrating it into iOS/macOS projects can be cumbersome. By wrapping **BoringSSL** into a **Swift Package**, the installation and management process becomes a breeze. This approach allows for:
 
 - 💨 Effortless integration of **BoringSSL** into **iOS** and **macOS** apps.
-- 🔄 **Automatic updates** every 14 days (or when a new release is available), ensuring you’re always working with the latest and most secure version.
+- 🔄 **Automatic updates** every 3 days (or when a new release is available), ensuring you’re always working with the latest and most secure version.
 - 🔧 Compatibility with modern **iOS/macOS** development tools, including **Xcode** and **Swift Package Manager**.
 
 ## 🌟 Features
