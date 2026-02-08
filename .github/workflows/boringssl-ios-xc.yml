@@ -98,15 +98,34 @@ jobs:
             gh release delete "$t" -y --cleanup-tag || true
           done <<<"$tags"
 
-      - name: Commit state
+      - name: Commit artifacts + state
         if: steps.gate.outputs.should == '1'
         run: |
           set -euo pipefail
           mkdir -p ci
           printf "%s\n" "${{ steps.gate.outputs.head }}" > ci/upstream_head.txt
           printf "%s\n" "${{ steps.gate.outputs.now }}" > ci/last_success_epoch.txt
+          rm -rf BoringSSL.xcframework .tmp_bssl
+          mkdir -p .tmp_bssl
+          unzip -q build-out/BoringSSL.xcframework.zip -d .tmp_bssl
+          test -d .tmp_bssl/BoringSSL.xcframework
+          mv .tmp_bssl/BoringSSL.xcframework ./BoringSSL.xcframework
+          cp -f build-out/BoringSSL.xcframework.zip ./BoringSSL.xcframework.zip
+          rm -rf .tmp_bssl
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add ci/upstream_head.txt ci/last_success_epoch.txt
-          git commit -m "ci: update state" || true
+          git add ci/upstream_head.txt ci/last_success_epoch.txt BoringSSL.xcframework BoringSSL.xcframework.zip
+          git commit -m "ci: refresh artifacts + state" || true
           git push || true
+
+      - name: Tag immutable semver
+        if: steps.gate.outputs.should == '1'
+        run: |
+          set -euo pipefail
+          git fetch --tags
+          base="1.0."
+          p="$(git tag -l '1.0.*' | sed 's/^1\.0\.//' | awk 'NF{print}' | sort -n | tail -n1)"
+          [ -n "${p:-}" ]||p=0
+          next="$base$((p+1))"
+          git tag "$next"
+          git push origin "$next"
