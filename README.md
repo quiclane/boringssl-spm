@@ -18,7 +18,7 @@ While **BoringSSL** is a critical part of many of Google’s services, integrati
 ## 🌟 Features
 
 - 📦 **Swift Package Manager (SPM) integration**: Easily include **BoringSSL** in your Xcode projects.
-- 🔄 **Automatic updates**: The package automatically updates every 14 days or whenever a new release is available, ensuring you have the latest version.
+- 🔄 **Automatic updates**: The package automatically updates every 3 days or whenever a new release is available, ensuring you have the latest version.
 - 🖥️ **Cross-platform support**: This package supports both **iOS** and **macOS** projects with appropriate architecture (arm64, x86_64).
 - 🔐 **Secure**: Built on top of **BoringSSL** for strong cryptography and **SSL/TLS** support.
 
