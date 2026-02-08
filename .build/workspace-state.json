@@ -1,0 +1,33 @@
+{
+  "object" : {
+    "artifacts" : [
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "boringssl-spm",
+          "kind" : "root",
+          "location" : "/Users/admin/Desktop/boringssl-spm",
+          "name" : "boringssl-spm"
+        },
+        "path" : "/Users/admin/Desktop/boringssl-spm/.build/artifacts/boringssl-spm/BoringSSL/BoringSSL.xcframework",
+        "source" : {
+          "checksum" : "7b38abcb125c6148280e2aa9379ed0c18f19f554f36e10f5466fff01f2d35d0f",
+          "type" : "remote",
+          "url" : "https://github.com/quiclane/boringssl-spm/releases/download/ios-20260208-305bcfce00b1/BoringSSL.xcframework.zip"
+        },
+        "targetName" : "BoringSSL"
+      }
+    ],
+    "dependencies" : [
+
+    ],
+    "prebuilts" : [
+
+    ]
+  },
+  "version" : 7
+}
