@@ -5,7 +5,7 @@ Deterministic, auto-updating **BoringSSL** binary distribution for Apple platfor
 packaged for **Swift Package Manager** as a prebuilt XCFramework.
 
 This repo exists because getting BoringSSL into a clean, reusable, zero-friction
-Apple binary artifact is *way* harder than it should be.
+Apple binary artifact is *way* *way* *way* harder than it should be. But - so is OpenSSL so here we are.
 
 Goal
 ----
@@ -121,7 +121,7 @@ How to use in Xcode
 
 4. Version rule:
    - Choose **Up to Next Major**
-   - Enter **1.0.0**
+   - Enter **1.0.[ whatever the "point" ver release you want, there's only two options, this is on full auto mode, the .yml and .sh files build & checksum etc, and then keep the most recent two ver ]**
 
 Then import / link as needed.
 
