@@ -65,7 +65,7 @@ Once **BoringSSL** is integrated, you can build and run your project as usual. *
 
 ## 🔄 Automatic Updates
 
-This package is designed to update **every 14 days automatically**. If there’s a new release of **BoringSSL** on GitHub, the workflow will automatically update your local version. If no update is necessary (i.e., if you already have the latest release), the process will do nothing. ✅
+This package is designed to update **every 3 days automatically, and keeps freshest build and one fallback build in case something breaks**. If there’s a new release of **BoringSSL** on GitHub, the workflow will automatically update your local version. If no update is necessary (i.e., if you already have the latest release), the process will do nothing. ✅
 
 To ensure this process works smoothly, the repository is configured to check for updates, pull the latest code, and build the required dependencies. 🔄
 
